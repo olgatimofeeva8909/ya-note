@@ -61,8 +61,8 @@ class TestNoteCreation(TestCase):
                 'title': 'Слаг',
                 'text': 'Текст заметки',
                 'slug': '',
-                }
-            )
+            }
+        )
         note = Note.objects.get(title='Слаг')
         self.assertEqual(note.slug, slugify('Слаг'))
 

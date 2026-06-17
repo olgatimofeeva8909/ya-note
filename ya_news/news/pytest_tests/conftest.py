@@ -4,13 +4,16 @@ from django.test.client import Client
 
 from news.models import News, Comment
 
+
 @pytest.fixture
-def author(django_user_model):  
+def author(django_user_model):
     return django_user_model.objects.create(username='Автор')
+
 
 @pytest.fixture
 def reader(django_user_model):
     return django_user_model.objects.create(username='Читатель')
+
 
 @pytest.fixture
 def author_client(author):
@@ -18,15 +21,18 @@ def author_client(author):
     client.force_login(author)
     return client
 
+
 @pytest.fixture
 def reader_client(reader):
     client = Client()
     client.force_login(reader)
     return client
 
+
 @pytest.fixture
 def anonymous_client():
     return Client()
+
 
 @pytest.fixture
 def news():
@@ -36,6 +42,7 @@ def news():
     )
     return news
 
+
 @pytest.fixture
 def comment(news, author):
     comment = Comment.objects.create(
@@ -44,4 +51,3 @@ def comment(news, author):
         text='Текст комментария',
     )
     return comment
-

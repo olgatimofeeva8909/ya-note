@@ -39,6 +39,7 @@ def test_comment_with_forbidden_words_not_published(
     assert response.status_code == HTTPStatus.OK
     assert response.context['form'].errors
 
+
 @pytest.mark.parametrize(
     'url_name',
     (

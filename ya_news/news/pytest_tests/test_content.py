@@ -1,5 +1,3 @@
-from http import HTTPStatus
-
 import pytest
 from django.urls import reverse
 
@@ -38,9 +36,9 @@ def test_comments_order_on_detail_page(client, news):
     )
 )
 def test_comment_form_availability(
-    client_fixture,
-    expected_result,
-    news,
+        client_fixture,
+        expected_result,
+        news,
 ):
     url = reverse('news:detail', args=(news.id,))
     response = client_fixture.get(url)
