@@ -1,80 +1,69 @@
 from http import HTTPStatus
 
 import pytest
+
 from django.urls import reverse
+
+from news.forms import BAD_WORDS, WARNING
+from news.models import Comment
 
 
 @pytest.mark.django_db
 def test_anonymous_user_cant_create_comment(client, news):
     url = reverse('news:detail', args=(news.id,))
-    response = client.post(
-        url,
-        data={'text': 'Тестовый комментарий'},
-    )
-    assert response.status_code == HTTPStatus.FOUND
+    client.post(url, data={'text': 'Комментарий'})
+    assert Comment.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_authorized_user_can_create_comment(
-        author_client,
-        news
-):
+def test_user_can_create_comment(author_client, author, news):
     url = reverse('news:detail', args=(news.id,))
-    response = author_client.post(
-        url,
-        data={'text': 'Тестовый комментарий'},
-    )
+    response = author_client.post(url, data={'text': 'Комментарий'})
     assert response.status_code == HTTPStatus.FOUND
+    comment = Comment.objects.get()
+    assert comment.text == 'Комментарий'
+    assert comment.author == author
+    assert comment.news == news
 
 
-def test_comment_with_forbidden_words_not_published(
-        author_client,
-        news,
-):
+@pytest.mark.django_db
+def test_user_cant_use_bad_words(author_client, news):
     url = reverse('news:detail', args=(news.id,))
-    response = author_client.post(
-        url,
-        data={'text': 'редиска'},
-    )
-    assert response.status_code == HTTPStatus.OK
-    assert response.context['form'].errors
+    response = author_client.post(url, data={'text': f'Текст {BAD_WORDS[0]}'})
+    form = response.context['form']
+    assert WARNING in form.errors['text']
+    assert Comment.objects.count() == 0
 
 
-@pytest.mark.parametrize(
-    'url_name',
-    (
-        'news:edit',
-        'news:delete',
-    )
-)
-def test_author_can_edit_or_delete_own_comment(
-        author_client,
-        comment,
-        url_name,
-):
-    url = reverse(
-        url_name,
-        args=(comment.id,)
-    )
-    response = author_client.get(url)
-    assert response.status_code == HTTPStatus.OK
+@pytest.mark.django_db
+def test_author_can_delete_comment(author_client, comment):
+    url = reverse('news:delete', args=(comment.id,))
+    response = author_client.delete(url)
+    assert response.status_code == HTTPStatus.FOUND
+    assert Comment.objects.count() == 0
 
 
-@pytest.mark.parametrize(
-    'url_name',
-    (
-        'news:edit',
-        'news:delete',
-    )
-)
-def test_user_cant_edit_or_delete_foreign_comment(
-        reader_client,
-        comment,
-        url_name,
-):
-    url = reverse(
-        url_name,
-        args=(comment.id,)
-    )
-    response = reader_client.get(url)
+@pytest.mark.django_db
+def test_user_cant_delete_comment_of_another_user(reader_client, comment):
+    url = reverse('news:delete', args=(comment.id,))
+    response = reader_client.delete(url)
     assert response.status_code == HTTPStatus.NOT_FOUND
+    assert Comment.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_author_can_edit_comment(author_client, comment):
+    url = reverse('news:edit', args=(comment.id,))
+    response = author_client.post(url, data={'text': 'Обновлённый комментарий'})
+    assert response.status_code == HTTPStatus.FOUND
+    comment.refresh_from_db()
+    assert comment.text == 'Обновлённый комментарий'
+
+
+@pytest.mark.django_db
+def test_user_cant_edit_comment_of_another_user(reader_client, comment):
+    url = reverse('news:edit', args=(comment.id,))
+    response = reader_client.post(url, data={'text': 'Другой текст'})
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    comment.refresh_from_db()
+    assert comment.text == 'Текст комментария'
